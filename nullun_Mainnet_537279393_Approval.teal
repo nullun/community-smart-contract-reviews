@@ -1,0 +1,416 @@
+// Akita Token Swap smart contract review.
+// Reviewed by nullun on 2022-01-23
+// Conclusion:
+// Given the relatively simple nature of the contract there's very little
+// attack surface available. Only 2 calls can result in an approval (post
+// deployment), 1 of which can only be made by the deployer.
+// All transactions coming from the smart contract are controlled by inner
+// transactions opposed to smart signatures which greatly improves protection
+// against attacks.
+// There are some redundant checks and the occasional invalid checks, but this
+// only reduces efficency and doesn't affect security.
+// The chained OR and AND expressions definitely inflate the logic and make
+// things more confusing, but this is likely just the result of using PyTeal.
+#pragma version 5
+
+// The following 9 checks are all OR'ed, so if any one of them are true the
+// branch to `handle_failure` will be made.
+
+// Sender must not pay a fee of more than 0.002 Algo.
+txn Fee
+pushint 2000
+>
+
+// Sender must not rekey during transaction.
+txn RekeyTo
+global ZeroAddress
+!=
+||
+
+// Application call does not allow CloseOut, UpdateApplication, ClearState,
+// DeleteApplication, or OptIn.
+txn OnCompletion
+int CloseOut
+==
+||
+txn OnCompletion
+int UpdateApplication
+==
+||
+txn OnCompletion
+int ClearState
+==
+||
+txn OnCompletion
+pushint DeleteApplication
+==
+||
+txn OnCompletion
+int OptIn
+==
+||
+
+// Sender must not close out during transaction.
+// This isn't a valid field for an application call.
+txn CloseRemainderTo
+global ZeroAddress
+!=
+||
+
+// Sender must not close out of an ASA during transaction.
+// This isn't a valid field for an application call.
+txn AssetCloseTo
+global ZeroAddress
+!=
+||
+bnz handle_failure
+
+// Check if we're deploying the contract.
+txn ApplicationID
+int 0
+==
+bnz handle_setup
+
+// If two arguments have been passed in, branch to `handle_configuration`.
+txn NumAppArgs
+int 2
+==
+bnz handle_configuration
+
+// If the application call is of type NoOp, branch to `handle_exchange`.
+// Given the logic above, it's guarenteed to be a NoOp call at this point.
+txn OnCompletion
+int NoOp
+==
+bnz handle_exchange
+
+err
+
+//////////////
+// Handlers //
+//////////////
+
+// Exchange
+// Group Transactions:
+//	+ Asset OptIn by sender
+//	+ Old asset sent to contract
+//	+ Application Call
+//		+ (itxn) New asset sent to sender
+handle_exchange:
+	// Transactions must be in a fixed group size of 3 transactions.
+	global GroupSize
+	int 3
+	==
+
+	// The first transaction must be an asset transfer.
+	gtxn 0 TypeEnum
+	int axfer
+	==
+	&&
+
+	// The first transaction must be for the asset ID as set in global state
+	// "New_Asset_ID".
+	gtxn 0 XferAsset
+	byte "New_Asset_ID"
+	app_global_get
+	==
+	&&
+
+	// The first transaction must not contain an asset amount.
+	gtxn 0 AssetAmount
+	int 0
+	==
+	&&
+
+	// The first transaction must be sent to themselves.
+	// This results in the sender opting into the asset if they weren't already.
+	gtxn 0 Sender
+	gtxn 0 AssetReceiver
+	==
+	&&
+
+	// The first transaction must not rekey during the transaction.
+	gtxn 0 RekeyTo
+	global ZeroAddress
+	==
+	&&
+
+	// The first transaction must not close out during the transaction.
+	// This isn't a valid field for an asset transfer.
+	gtxn 0 CloseRemainderTo
+	global ZeroAddress
+	==
+	&&
+
+	// The first transaction must not close out of an ASA during the transaction.
+	gtxn 0 AssetCloseTo
+	global ZeroAddress
+	==
+	&&
+
+	// The second transaction must be an asset transfer.
+	gtxn 1 TypeEnum
+	int axfer
+	==
+	&&
+
+	// The second transaction must not contain an asset amount.
+	gtxn 1 AssetAmount
+	int 0
+	>
+	&&
+
+	// The second transaction must be for the asset ID as set in global state
+	// "Swap_Asset_ID".
+	gtxn 1 XferAsset
+	byte "Swap_Asset_ID"
+	app_global_get
+	==
+	&&
+
+	// The second transaction must be sent from the same sender as the first
+	// transaction.
+	gtxn 1 Sender
+	gtxn 0 Sender
+	==
+	&&
+
+	// The second transaction must be sent to the application address.
+	gtxn 1 AssetReceiver
+	global CurrentApplicationAddress
+	==
+	&&
+
+	// The second transaction must not rekey during the transaction.
+	gtxn 1 RekeyTo
+	global ZeroAddress
+	==
+	&&
+
+	// The second transaction must not close out during the transaction.
+	// This isn't a valid field for an asset transfer.
+	gtxn 1 CloseRemainderTo
+	global ZeroAddress
+	==
+	&&
+
+	// The second transaction must not close out of an ASA during the
+	// transaction.
+	gtxn 1 AssetCloseTo
+	global ZeroAddress
+	==
+	&&
+
+	// The third transaction must be a NoOp call.
+	gtxn 2 OnCompletion
+	int NoOp
+	==
+	&&
+
+	// The third transaction must not have any arguments passed in.
+	gtxn 2 NumAppArgs
+	int 0
+	==
+	&&
+
+	// The third transaction must be sent from the same sender as the second
+	// transaction.
+	gtxn 2 Sender
+	gtxn 1 Sender
+	==
+	&&
+	assert
+
+	// The asset amount sent in the second transaction is multiplied by the
+	// global state value of "Multiply" and the result is a parameter of the
+	// subroutine `send_asa`.
+	// This is done because the old asset had zero decimals and the new asset has
+	// six decimals.
+	gtxn 1 AssetAmount
+	byte "Multiply"
+	app_global_get
+	*
+	callsub send_asa
+
+	// Successfully return.
+	int 1
+	return
+
+// Configuration
+// Group Transactions:
+//	+ Send minimum balance requirement to application
+//	+ Application Call
+//		+ (itxn) OptIn to old asset
+//		+ (itxn) OptIn to new asset
+handle_configuration:
+	// The global state value for "Swap_Asset_ID" must be 0 (or not set).
+	byte "Swap_Asset_ID"
+	app_global_get
+	int 0
+	==
+
+	// The global state value for "New_Asset_ID" must be 0 (or not set).
+	byte "New_Asset_ID"
+	app_global_get
+	int 0
+	==
+	&&
+
+	// Transactions must be in a fixed group size of 2 transactions.
+	global GroupSize
+	int 2
+	==
+	&&
+
+	// The first transaction must be a payment transaction.
+	gtxn 0 TypeEnum
+	int pay
+	==
+	&&
+
+	// The first transaction must be sent to the application address.
+	gtxn 0 Receiver
+	global CurrentApplicationAddress
+	==
+	&&
+
+	// The first transaction must be sent from the same address that created
+	// deployed the contract.
+	gtxn 0 Sender
+	global CreatorAddress
+	==
+	&&
+
+	// The first transaction must contain an amount of 0.302 Algo.
+	// This is the minimum balance requirement for the application address plus
+	// 0.002 Algo to cover the cost of sending the optin transactions.
+	// 0.1 for Algo
+	// 0.2 for the old ASA and the new ASA
+	// 0.002 Algo to send 2 asset transfer optin transactions.
+	gtxn 0 Amount
+	pushint 302000
+	==
+	&&
+
+	// The second transaction must be an application call to the application.
+	gtxn 1 ApplicationID
+	global CurrentApplicationID
+	==
+	&&
+
+	// The second transaction must be a NoOp call.
+	gtxn 1 OnCompletion
+	int NoOp
+	==
+	&&
+	assert
+
+	// The first argument in the application call should contain the asset ID of
+	// the old asset, whilst the second argument should contain the asset ID of
+	// the new asset.
+
+	// Using the first argument (old asset ID) call the `optin_asa` subroutine.
+	txna ApplicationArgs 0
+	btoi
+	callsub optin_asa
+
+	// Using the second argument (new asset ID) call the `optin_asa` subroutine.
+	txna ApplicationArgs 1
+	btoi
+	callsub optin_asa
+
+	// Set the global state value of "Swap_Asset_ID" to the old asset ID.
+	byte "Swap_Asset_ID"
+	txna ApplicationArgs 0
+	btoi
+	app_global_put
+
+	// Set the global state value of "New_Asset_ID" to the new asset ID.
+	byte "New_Asset_ID"
+	txna ApplicationArgs 1
+	btoi
+	app_global_put
+
+	// Using the global state value of "New_Asset_ID", get the decimal value of
+	// the new asset and store the result in scratch space.
+	byte "New_Asset_ID"
+	app_global_get
+	asset_params_get AssetDecimals
+	store 0
+	store 1
+	load 0
+	assert
+
+	// Set the global state value of "Multiply" to the value 10 to the power of
+	// the number of decimals, retrieved from scratch space.
+	byte "Multiply"
+	pushint 10
+	load 1
+	exp
+	app_global_put
+
+	// Successfully return.
+	int 1
+	return
+
+// Setup
+handle_setup:
+	int 1
+	return
+
+// Failure
+handle_failure:
+	int 0
+	return
+
+/////////////////
+// Subroutines //
+/////////////////
+
+// Parameter: AssetID (uint64)
+optin_asa:
+	store 2
+
+	// Create and submit an asset transfer inner transaction. Sending 0 asset
+	// amount to itself for the asset ID provided before the call.
+	itxn_begin
+
+	int axfer
+	itxn_field TypeEnum
+
+	load 2
+	itxn_field XferAsset
+
+	global CurrentApplicationAddress
+	itxn_field AssetReceiver
+
+	itxn_submit
+
+	retsub
+
+// Parameter: Asset Amount (uint64)
+send_asa:
+	store 3
+
+	// Create and submit an asset transfer inner transaction. Sending an asset
+	// amount provided before the call, to the sender of the application call.
+	itxn_begin
+
+	int axfer
+	itxn_field TypeEnum
+
+	txn Sender
+	itxn_field AssetReceiver
+
+	load 3
+	itxn_field AssetAmount
+
+	byte "New_Asset_ID"
+	app_global_get
+
+	itxn_field XferAsset
+
+	itxn_submit
+
+	retsub
+
