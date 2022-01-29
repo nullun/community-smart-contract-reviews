@@ -1,0 +1,41 @@
+body {
+	background: #e2e2e2;
+	font-family: Arial, Helvetica, sans-serif;
+	margin: 4px;
+}
+
+:link,:visited {
+	color: #131313;
+}
+
+table {
+	border-collapse: collapse;
+}
+
+tr {
+	border: 1px solid #131313;
+}
+
+th, td {
+	padding: 4px;
+}
+
+th {
+	background: #dadada;
+	text-align: right;
+}
+
+pre {
+	background: #c9c9c9;
+	border: 1px dashed #131313;
+	margin: 2px;
+	padding: 4px;
+	word-break: break-all;
+	white-space: pre-wrap;
+	max-height: 400px;
+	overflow-y: auto;
+}
+
+pre.review {
+	max-height: unset;
+}

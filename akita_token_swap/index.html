@@ -1,31 +1,49 @@
-# Akita Token Swap
-
-|.|Overview|
-|---:|---|
-|**Title**|Akita Token Swap|
-|**Description**|The Akita Inu ASA changed from an old ASA to a new ASA and offered this contract to holders to provide a way to swap with a 1-to-1 exchange.|
-|**Network**|Mainnet|
-|**Application ID**|537279393|
-|**Teal Version**|5|
-|**AVM Version**|1.0|
-|**OnComplete Features**|NoOp|
-|**State Schemas**|3 Global Bytes, 0 Global Ints, 0 Local Bytes, 0 Local Ints.|
-|**Supported ARCs**|None|
-|**GitHub**|https://github.com/OfficialAkitaInu/SmartContracts/blob/development/contracts/AkitaTokenSwapper/|
-|**Timeline of notable events**|2022-01-10 23:30:21 - Initial deployment.<br>2022-01-10 23:30:30 - Application opts in to old and new ASAs. Configure global states.<br>2022-01-11 15:28:36 - First swap takes place.|
-|**Last updated**|2022-10-22 09:24:29|
-
----
-
-## Base64 Bytecode
-
-Approval Program: `BSAFAAQBAgMmAwxOZXdfQXNzZXRfSUQNU3dhcF9Bc3NldF9JRAhNdWx0aXBseTEBgdAPDTEgMgMTETEZJRIRMRkjEhExGSEEEhExGYEFEhExGSQSETEJMgMTETEVMgMTEUABCzEYIhJAAQIxGyUSQACUMRkiEkAAAQAyBCEEEjMAECMSEDMAEShkEhAzABIiEhAzAAAzABQSEDMAIDIDEhAzAAkyAxIQMwAVMgMSEDMBECMSEDMBEiINEDMBESlkEhAzAQAzAAASEDMBFDIKEhAzASAyAxIQMwEJMgMSEDMBFTIDEhAzAhkiEhAzAhsiEhAzAgAzAQASEEQzARIqZAuIAH0kQylkIhIoZCISEDIEJRIQMwAQJBIQMwAHMgoSEDMAADIJEhAzAAiBsLcSEhAzARgyCBIQMwEZIhIQRDYaABeIACs2GgEXiAAkKTYaABdnKDYaARdnKGRxATUANQE0AEQqgQo0AZRnJEMkQyJDNQKxI7IQNAKyETIKshSziTUDsSOyEDEAshQ0A7ISKGSyEbOJ`
-Clear State Program: `BYEAQw==`
-
-## Decompiled TEAL
-
-Approval Program:
-```TEAL
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Community Smart Contract Reviews</title>
+		<link rel="stylesheet" href="../cscr.css">
+	</head>
+	<body>
+		<h1><a href="../">Community Smart Contract Reviews</a></h1>
+		<h1>Akita Token Swap</h1>
+		<ul>
+			<li><a href="#ov">Overview</a></li>
+			<li><a href="#b64bc">Base64 Bytecode</a></li>
+			<li><a href="#dt">Decompiled TEAL</a></li>
+			<li><a href="#ur">User Reviews</a></li>
+		</ul>
+		<h2 id="ur">User Reviews</h2>
+		<ul>
+			<li><a href="nullun.html">nullun</a></li>
+		</ul>
+		<hr>
+		<h2 id="ov">Overview</h2>
+		<table>
+			<tr><th>Title</th><td>Akita Token Swap</td></tr>
+			<tr><th>Description</th><td>The Akita Inu ASA changed from an old ASA to a new ASA and offered this contract to holders as a way to swap with a 1-to-1 exchange rate.</td></tr>
+			<tr><th>Network</th><td>Mainnet</td></tr>
+			<tr><th>Application ID</th><td><a href="https://algoexplorer.io/application/537279393" target="_blank">537279393</a></td></tr>
+			<tr><th>Teal Version</th><td>5</td></tr>
+			<tr><th>AVM Version</th><td>1.0</td></tr>
+			<tr><th>OnComplete Features</th><td>NoOp</td></tr>
+			<tr><th>State Schemas</th><td>3 Global Bytes, 0 Global Ints, 0 Local Bytes, 0 Local Ints.</td></tr>
+			<tr><th>Supported ARCs</th><td>None</td></tr>
+			<tr><th>GitHub</th><td><a href="https://github.com/OfficialAkitaInu/SmartContracts/blob/development/contracts/AkitaTokenSwapper/" target="_blank">https://github.com/OfficialAkitaInu/SmartContracts/blob/development/contracts/AkitaTokenSwapper/</a></td></tr>
+			<tr><th>Written In</th><td>PyTeal</td></tr>
+			<tr><th>Timeline of notable events</th><td><ul><li>2022-01-10 23:30:21 - Initial deployment.</li><li>2022-01-10 23:30:30 - Application opts in to old and new ASAs. Configure global states.</li><li>2022-01-11 15:28:36 - First swap takes place.</li></ul></td></tr>
+			<tr><th>Last updated</th><td>2022-10-22 11:02:39</td></tr>
+		</table>
+		<hr>
+		<h2 id="b64bc">Base64 Bytecode</h2>
+		<p>Approval Program:</p>
+		<pre>BSAFAAQBAgMmAwxOZXdfQXNzZXRfSUQNU3dhcF9Bc3NldF9JRAhNdWx0aXBseTEBgdAPDTEgMgMTETEZJRIRMRkjEhExGSEEEhExGYEFEhExGSQSETEJMgMTETEVMgMTEUABCzEYIhJAAQIxGyUSQACUMRkiEkAAAQAyBCEEEjMAECMSEDMAEShkEhAzABIiEhAzAAAzABQSEDMAIDIDEhAzAAkyAxIQMwAVMgMSEDMBECMSEDMBEiINEDMBESlkEhAzAQAzAAASEDMBFDIKEhAzASAyAxIQMwEJMgMSEDMBFTIDEhAzAhkiEhAzAhsiEhAzAgAzAQASEEQzARIqZAuIAH0kQylkIhIoZCISEDIEJRIQMwAQJBIQMwAHMgoSEDMAADIJEhAzAAiBsLcSEhAzARgyCBIQMwEZIhIQRDYaABeIACs2GgEXiAAkKTYaABdnKDYaARdnKGRxATUANQE0AEQqgQo0AZRnJEMkQyJDNQKxI7IQNAKyETIKshSziTUDsSOyEDEAshQ0A7ISKGSyEbOJ</pre>
+		<p>Clear State Program:</p>
+		<pre>BYEAQw==</pre>
+		<hr>
+		<h2 id="dt">Decompiled TEAL</h2>
+		<p>Approval Program:</p>
+		<pre>
 #pragma version 5
 
 txn Fee
@@ -328,13 +346,13 @@ label5:
 	itxn_submit
 
 	retsub
-```
-
-Clear State Program:
-```TEAL
+		</pre>
+		<p>Clear State Program:</p>
+		<pre>
 #pragma version 5
 
 int 0
 return
-```
-
+		</pre>
+	</body>
+</html>
