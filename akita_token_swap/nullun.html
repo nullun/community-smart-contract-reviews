@@ -165,7 +165,7 @@ handle_exchange:
 	==
 	&&
 
-	// The second transaction must not contain an asset amount.
+	// The second transaction must contain a non-zero asset amount.
 	gtxn 1 AssetAmount
 	int 0
 	>
